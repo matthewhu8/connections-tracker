@@ -1,7 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Navigation from '../components/Navigation'
-import { Save, X } from 'lucide-react'
+import { Save, X, AlertCircle } from 'lucide-react'
+import axios from 'axios'
+import Cookies from 'js-cookie'
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
 function AddContact() {
   const navigate = useNavigate()
@@ -19,6 +23,8 @@ function AddContact() {
     notes: '',
     contactsProvided: ''
   })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -30,10 +36,53 @@ function AddContact() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    // TODO: Submit to API
-    console.log('Submitting:', formData)
-    // Navigate back to contacts page after saving
-    navigate('/contacts')
+    setLoading(true)
+    setError(null)
+
+    try {
+      const token = Cookies.get('token')
+      if (!token) {
+        throw new Error('No authentication token found')
+      }
+
+      // Transform form data to match API expectations
+      const contactData = {
+        fullName: formData.name,
+        jobTitle: formData.job,
+        firm: formData.firm,
+        role: formData.role,
+        email: formData.email,
+        phone: formData.phone,
+        linkedIn: formData.linkedin,
+        reachedOut: formData.reachedOut,
+        responded: formData.responded,
+        notes: formData.notes,
+        contactsProvided: formData.contactsProvided ? formData.contactsProvided.split('\n').filter(c => c.trim()) : []
+      }
+
+      // Add referredBy if provided (this might need to be a contact ID)
+      if (formData.referredBy) {
+        contactData.referredByName = formData.referredBy
+      }
+
+      const response = await axios.post(
+        `${API_URL}/api/contacts`,
+        contactData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+
+      // Navigate back to contacts page after successful save
+      navigate('/contacts')
+    } catch (error) {
+      console.error('Error saving contact:', error)
+      setError(error.response?.data?.message || 'Failed to save contact. Please try again.')
+      setLoading(false)
+    }
   }
 
   return (
@@ -48,6 +97,18 @@ function AddContact() {
             </h2>
           </div>
         </div>
+
+        {error && (
+          <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
+            <div className="flex">
+              <AlertCircle className="h-5 w-5 text-red-400" />
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Error saving contact</h3>
+                <p className="mt-1 text-sm text-red-700">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
@@ -272,10 +333,20 @@ function AddContact() {
             </button>
             <button
               type="submit"
-              className="inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              disabled={loading}
+              className="inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Save className="w-4 h-4 mr-2" />
-              Save Contact
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Contact
+                </>
+              )}
             </button>
           </div>
         </form>

@@ -1,19 +1,24 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import Navigation from '../components/Navigation'
-import { ArrowLeft, Edit, Trash2, Mail, Phone, ExternalLink, Calendar, User, Building, Briefcase, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Trash2, Mail, Phone, ExternalLink, Calendar, User, Building, Briefcase, AlertCircle, Check, X, Plus, Save, Pencil } from 'lucide-react'
 import axios from 'axios'
 import Cookies from 'js-cookie'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
-function ContactDetail() {
+function ContactDetailEditable() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [contact, setContact] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [deleting, setDeleting] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [editingField, setEditingField] = useState(null)
+  const [tempValue, setTempValue] = useState('')
+  const [newNote, setNewNote] = useState('')
+  const [addingNote, setAddingNote] = useState(false)
 
   useEffect(() => {
     fetchContact()
@@ -38,17 +43,17 @@ function ContactDetail() {
       // Transform the data to match the component's expected format
       const contactData = {
         id: response.data.id,
-        name: response.data.fullName,
-        job: response.data.jobTitle,
+        fullName: response.data.fullName,
+        jobTitle: response.data.jobTitle,
         firm: response.data.firm,
         role: response.data.role,
         email: response.data.email,
         phone: response.data.phone,
-        linkedin: response.data.linkedIn,
+        linkedIn: response.data.linkedIn,
         reachedOut: response.data.reachedOut,
         responded: response.data.responded,
-        referredBy: response.data.referredBy?.fullName || null,
-        contactsProvided: response.data.referredContacts?.map(c => `${c.fullName}`) || [],
+        referredBy: response.data.referredBy?.fullName || '',
+        contactsProvided: response.data.referredContacts?.map(c => c.fullName) || [],
         createdAt: response.data.createdAt,
         notes: response.data.notes || []
       }
@@ -64,6 +69,39 @@ function ContactDetail() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const updateContact = async (field, value) => {
+    setSaving(true)
+    try {
+      const token = Cookies.get('token')
+      if (!token) {
+        throw new Error('No authentication token found')
+      }
+
+      const updateData = { [field]: value }
+      
+      await axios.put(`${API_URL}/api/contacts/${id}`, updateData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      // Update local state
+      setContact(prev => ({ ...prev, [field]: value }))
+      setEditingField(null)
+    } catch (error) {
+      console.error('Error updating contact:', error)
+      alert('Failed to update contact. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const toggleStatus = async (field) => {
+    const newValue = !contact[field]
+    await updateContact(field, newValue)
   }
 
   const handleDelete = async () => {
@@ -87,6 +125,62 @@ function ContactDetail() {
         alert('Failed to delete contact. Please try again.')
         setDeleting(false)
       }
+    }
+  }
+
+  const startEditing = (field, value) => {
+    setEditingField(field)
+    setTempValue(value || '')
+  }
+
+  const saveField = () => {
+    if (tempValue !== contact[editingField]) {
+      updateContact(editingField, tempValue)
+    } else {
+      setEditingField(null)
+    }
+  }
+
+  const cancelEditing = () => {
+    setEditingField(null)
+    setTempValue('')
+  }
+
+  const addNote = async () => {
+    if (!newNote.trim()) return
+    
+    setAddingNote(true)
+    try {
+      const token = Cookies.get('token')
+      if (!token) {
+        throw new Error('No authentication token found')
+      }
+
+      const response = await axios.post(
+        `${API_URL}/api/notes`,
+        {
+          contactId: id,
+          content: newNote
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+
+      // Add note to local state
+      setContact(prev => ({
+        ...prev,
+        notes: [...(prev.notes || []), response.data]
+      }))
+      setNewNote('')
+    } catch (error) {
+      console.error('Error adding note:', error)
+      alert('Failed to add note. Please try again.')
+    } finally {
+      setAddingNote(false)
     }
   }
 
@@ -127,6 +221,52 @@ function ContactDetail() {
     return null
   }
 
+  const EditableField = ({ field, value, type = 'text', label, icon: Icon }) => {
+    const isEditing = editingField === field
+
+    if (isEditing) {
+      return (
+        <div className="flex items-center space-x-2">
+          <input
+            type={type}
+            value={tempValue}
+            onChange={(e) => setTempValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') saveField()
+              if (e.key === 'Escape') cancelEditing()
+            }}
+            className="flex-1 px-2 py-1 border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            autoFocus
+          />
+          <button onClick={saveField} className="text-green-600 hover:text-green-800">
+            <Check className="w-4 h-4" />
+          </button>
+          <button onClick={cancelEditing} className="text-red-600 hover:text-red-800">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <div className="group flex items-center justify-between">
+        <div className="flex items-center">
+          {Icon && <Icon className="w-4 h-4 mr-2 text-gray-400" />}
+          <div>
+            {label && <dt className="text-sm font-medium text-gray-500">{label}</dt>}
+            <dd className="text-sm text-gray-900">{value || 'N/A'}</dd>
+          </div>
+        </div>
+        <button
+          onClick={() => startEditing(field, value)}
+          className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600"
+        >
+          <Pencil className="w-4 h-4" />
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation />
@@ -145,20 +285,13 @@ function ContactDetail() {
           <div className="md:flex md:items-center md:justify-between">
             <div className="flex-1 min-w-0">
               <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
-                {contact.name}
+                {contact.fullName}
               </h2>
               <p className="mt-1 text-sm text-gray-500">
                 Added on {new Date(contact.createdAt).toLocaleDateString()}
               </p>
             </div>
-            <div className="mt-4 flex md:mt-0 md:ml-4 space-x-3">
-              <button
-                onClick={() => navigate(`/contacts/${id}/edit`)}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                Edit
-              </button>
+            <div className="mt-4 flex md:mt-0 md:ml-4">
               <button
                 onClick={handleDelete}
                 disabled={deleting}
@@ -189,82 +322,14 @@ function ContactDetail() {
                 <h3 className="text-lg leading-6 font-medium text-gray-900">Contact Information</h3>
               </div>
               <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
-                <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500 flex items-center">
-                      <Briefcase className="w-4 h-4 mr-2" />
-                      Position
-                    </dt>
-                    <dd className="mt-1 text-sm text-gray-900">{contact.job}</dd>
-                  </div>
-                  
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500 flex items-center">
-                      <Building className="w-4 h-4 mr-2" />
-                      Firm
-                    </dt>
-                    <dd className="mt-1 text-sm text-gray-900">{contact.firm}</dd>
-                  </div>
-                  
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Division/Group</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{contact.role}</dd>
-                  </div>
-                  
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500 flex items-center">
-                      <User className="w-4 h-4 mr-2" />
-                      Referred By
-                    </dt>
-                    <dd className="mt-1 text-sm text-gray-900">{contact.referredBy || 'N/A'}</dd>
-                  </div>
-                  
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500 flex items-center">
-                      <Mail className="w-4 h-4 mr-2" />
-                      Email
-                    </dt>
-                    <dd className="mt-1 text-sm text-gray-900">
-                      {contact.email ? (
-                        <a href={`mailto:${contact.email}`} className="text-blue-600 hover:text-blue-500">
-                          {contact.email}
-                        </a>
-                      ) : 'N/A'}
-                    </dd>
-                  </div>
-                  
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500 flex items-center">
-                      <Phone className="w-4 h-4 mr-2" />
-                      Phone
-                    </dt>
-                    <dd className="mt-1 text-sm text-gray-900">
-                      {contact.phone ? (
-                        <a href={`tel:${contact.phone}`} className="text-blue-600 hover:text-blue-500">
-                          {contact.phone}
-                        </a>
-                      ) : 'N/A'}
-                    </dd>
-                  </div>
-                  
-                  <div className="sm:col-span-2">
-                    <dt className="text-sm font-medium text-gray-500 flex items-center">
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      LinkedIn
-                    </dt>
-                    <dd className="mt-1 text-sm text-gray-900">
-                      {contact.linkedin ? (
-                        <a 
-                          href={`https://${contact.linkedin}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-500"
-                        >
-                          {contact.linkedin}
-                        </a>
-                      ) : 'N/A'}
-                    </dd>
-                  </div>
+                <dl className="space-y-4">
+                  <EditableField field="jobTitle" value={contact.jobTitle} label="Position" icon={Briefcase} />
+                  <EditableField field="firm" value={contact.firm} label="Firm" icon={Building} />
+                  <EditableField field="role" value={contact.role} label="Division/Group" />
+                  <EditableField field="email" value={contact.email} label="Email" type="email" icon={Mail} />
+                  <EditableField field="phone" value={contact.phone} label="Phone" type="tel" icon={Phone} />
+                  <EditableField field="linkedIn" value={contact.linkedIn} label="LinkedIn" icon={ExternalLink} />
+                  <EditableField field="referredBy" value={contact.referredBy} label="Referred By" icon={User} />
                 </dl>
               </div>
             </div>
@@ -275,6 +340,32 @@ function ContactDetail() {
                 <h3 className="text-lg leading-6 font-medium text-gray-900">Notes & Timeline</h3>
               </div>
               <div className="px-4 py-5 sm:px-6">
+                {/* Add new note */}
+                <div className="mb-6">
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      value={newNote}
+                      onChange={(e) => setNewNote(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && addNote()}
+                      placeholder="Add a note..."
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      onClick={addNote}
+                      disabled={addingNote || !newNote.trim()}
+                      className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {addingNote ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      ) : (
+                        <Plus className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Notes list */}
                 {contact.notes && contact.notes.length > 0 ? (
                   <div className="flow-root">
                     <ul className="-mb-8">
@@ -308,7 +399,7 @@ function ContactDetail() {
                     </ul>
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-sm">No notes yet. Add notes when editing this contact.</p>
+                  <p className="text-gray-500 text-sm">No notes yet. Add your first note above.</p>
                 )}
               </div>
             </div>
@@ -316,7 +407,7 @@ function ContactDetail() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Status Card */}
+            {/* Status Card with Quick Toggles */}
             <div className="bg-white shadow rounded-lg">
               <div className="px-4 py-5 sm:px-6">
                 <h3 className="text-lg leading-6 font-medium text-gray-900">Outreach Status</h3>
@@ -324,21 +415,50 @@ function ContactDetail() {
               <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-500">Reached Out</span>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      contact.reachedOut ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {contact.reachedOut ? 'Yes' : 'No'}
-                    </span>
+                    <span className="text-sm font-medium text-gray-700">Reached Out</span>
+                    <button
+                      onClick={() => toggleStatus('reachedOut')}
+                      disabled={saving}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                        contact.reachedOut ? 'bg-blue-600' : 'bg-gray-200'
+                      } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          contact.reachedOut ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
                   </div>
+                  
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-500">Responded</span>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      contact.responded ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {contact.responded ? 'Yes' : 'No'}
-                    </span>
+                    <span className="text-sm font-medium text-gray-700">Responded</span>
+                    <button
+                      onClick={() => toggleStatus('responded')}
+                      disabled={saving || !contact.reachedOut}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ${
+                        contact.responded ? 'bg-green-600' : 'bg-gray-200'
+                      } ${saving || !contact.reachedOut ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          contact.responded ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
                   </div>
+
+                  {contact.reachedOut && !contact.responded && (
+                    <div className="pt-2 border-t">
+                      <p className="text-xs text-yellow-600">Waiting for response</p>
+                    </div>
+                  )}
+                  
+                  {contact.responded && (
+                    <div className="pt-2 border-t">
+                      <p className="text-xs text-green-600">Contact has responded!</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -369,4 +489,4 @@ function ContactDetail() {
   )
 }
 
-export default ContactDetail
+export default ContactDetailEditable

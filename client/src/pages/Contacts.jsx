@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Navigation from '../components/Navigation'
-import { Search, Filter, Plus, Mail, Phone, ExternalLink, Check, X } from 'lucide-react'
+import { Search, Filter, Plus, Mail, Phone, ExternalLink, Check, X, AlertCircle } from 'lucide-react'
+import axios from 'axios'
+import Cookies from 'js-cookie'
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
 function Contacts() {
   const [contacts, setContacts] = useState([])
@@ -9,57 +13,57 @@ function Contacts() {
   const [filterFirm, setFilterFirm] = useState('')
   const [filterRole, setFilterRole] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
-    // TODO: Fetch contacts from API
-    // Mock data for now
-    setContacts([
-      {
-        id: 1,
-        name: 'Jane Doe',
-        job: 'Analyst',
-        firm: 'Goldman Sachs',
-        role: 'M&A',
-        email: 'jane.doe@gs.com',
-        phone: '555-0101',
-        linkedin: 'linkedin.com/in/janedoe',
-        reachedOut: true,
-        responded: true,
-        referredBy: 'Professor Lee'
-      },
-      {
-        id: 2,
-        name: 'John Smith',
-        job: 'Vice President',
-        firm: 'Morgan Stanley',
-        role: 'LevFin',
-        email: 'john.smith@ms.com',
-        phone: '555-0102',
-        linkedin: 'linkedin.com/in/johnsmith',
-        reachedOut: true,
-        responded: false,
-        referredBy: 'Jane Doe'
-      },
-      {
-        id: 3,
-        name: 'Emily Chen',
-        job: 'Associate',
-        firm: 'JP Morgan',
-        role: 'ECM',
-        email: 'emily.chen@jpmorgan.com',
-        phone: '555-0103',
-        linkedin: 'linkedin.com/in/emilychen',
-        reachedOut: false,
-        responded: false,
-        referredBy: 'Career Center'
-      }
-    ])
+    fetchContacts()
   }, [])
 
+  const fetchContacts = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const token = Cookies.get('token')
+      if (!token) {
+        throw new Error('No authentication token found')
+      }
+
+      const response = await axios.get(`${API_URL}/api/contacts`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+
+      // Transform the data to match the component's expected format
+      const transformedContacts = response.data.map(contact => ({
+        id: contact.id,
+        name: contact.fullName,
+        job: contact.jobTitle,
+        firm: contact.firm,
+        role: contact.role,
+        email: contact.email,
+        phone: contact.phone,
+        linkedin: contact.linkedIn,
+        reachedOut: contact.reachedOut,
+        responded: contact.responded,
+        referredBy: contact.referredBy?.fullName || null
+      }))
+
+      setContacts(transformedContacts)
+    } catch (error) {
+      console.error('Error fetching contacts:', error)
+      setError(error.response?.data?.message || 'Failed to load contacts')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const filteredContacts = contacts.filter(contact => {
-    const matchesSearch = contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         contact.firm.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         contact.role.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch = contact.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         contact.firm?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         contact.role?.toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchesFirm = !filterFirm || contact.firm === filterFirm
     const matchesRole = !filterRole || contact.role === filterRole
@@ -158,7 +162,28 @@ function Contacts() {
           </div>
         </div>
 
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="mb-8 bg-red-50 border border-red-200 rounded-md p-4">
+            <div className="flex">
+              <AlertCircle className="h-5 w-5 text-red-400" />
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Error loading contacts</h3>
+                <p className="mt-1 text-sm text-red-700">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Contacts Table */}
+        {!loading && !error && (
         <div className="bg-white shadow rounded-lg overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -255,6 +280,7 @@ function Contacts() {
             </div>
           )}
         </div>
+        )}
       </main>
     </div>
   )

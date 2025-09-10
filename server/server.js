@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -26,11 +27,18 @@ const authRoutes = require('./routes/auth');
 const contactRoutes = require('./routes/contacts');
 const noteRoutes = require('./routes/notes');
 const importExportRoutes = require('./routes/importExport');
+const dashboardRoutes = require('./routes/dashboard');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/contacts', contactRoutes);
 app.use('/api/notes', noteRoutes);
 app.use('/api', importExportRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+
+// Serve static files from the React app build directory in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../client/dist')));
+}
 
 // Health check
 app.get('/health', (req, res) => {
@@ -57,6 +65,13 @@ app.post('/api/test-post', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Handle React routing, return all requests to React app in production
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/dist', 'index.html'));
+  });
+}
 
 // Error handling middleware
 app.use((err, req, res, next) => {
