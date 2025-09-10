@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Navigation from '../components/Navigation'
-import { Users, Send, MessageSquare, TrendingUp, Plus } from 'lucide-react'
+import { Users, Send, MessageSquare, TrendingUp, Plus, AlertCircle } from 'lucide-react'
+import axios from 'axios'
+import Cookies from 'js-cookie'
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
 function Dashboard() {
   const [stats, setStats] = useState({
@@ -12,27 +16,37 @@ function Dashboard() {
     topFirms: [],
     recentContacts: []
   })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
-    // TODO: Fetch stats from API
-    // For now, using mock data
-    setStats({
-      totalContacts: 12,
-      reachedOut: 8,
-      responded: 5,
-      responseRate: 62.5,
-      topFirms: [
-        { name: 'Goldman Sachs', count: 3 },
-        { name: 'Morgan Stanley', count: 2 },
-        { name: 'JP Morgan', count: 2 }
-      ],
-      recentContacts: [
-        { id: 1, name: 'Jane Doe', firm: 'Goldman Sachs', role: 'M&A Analyst', reachedOut: true, responded: true },
-        { id: 2, name: 'John Smith', firm: 'Morgan Stanley', role: 'VP', reachedOut: true, responded: false },
-        { id: 3, name: 'Emily Chen', firm: 'JP Morgan', role: 'Associate', reachedOut: false, responded: false }
-      ]
-    })
+    fetchDashboardStats()
   }, [])
+
+  const fetchDashboardStats = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const token = Cookies.get('token')
+      if (!token) {
+        throw new Error('No authentication token found')
+      }
+
+      const response = await axios.get(`${API_URL}/api/dashboard/stats`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+
+      setStats(response.data)
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error)
+      setError(error.response?.data?.message || 'Failed to load dashboard data')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -55,6 +69,27 @@ function Dashboard() {
             </Link>
           </div>
         </div>
+
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        )}
+
+        {error && (
+          <div className="mb-8 bg-red-50 border border-red-200 rounded-md p-4">
+            <div className="flex">
+              <AlertCircle className="h-5 w-5 text-red-400" />
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Error loading dashboard</h3>
+                <p className="mt-1 text-sm text-red-700">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!loading && !error && (
+          <>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
@@ -190,6 +225,8 @@ function Dashboard() {
             </div>
           </div>
         </div>
+          </>
+        )}
       </main>
     </div>
   )

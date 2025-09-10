@@ -4,7 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Contacts from './pages/Contacts'
-import ContactDetail from './pages/ContactDetail'
+import ContactDetailEditable from './pages/ContactDetailEditable'
 import AddContact from './pages/AddContact'
 import './App.css'
 
@@ -32,7 +32,7 @@ function App() {
             } />
             <Route path="/contacts/:id" element={
               <ProtectedRoute>
-                <ContactDetail />
+                <ContactDetailEditable />
               </ProtectedRoute>
             } />
           </Routes>
