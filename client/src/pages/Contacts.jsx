@@ -5,7 +5,7 @@ import { Search, Filter, Plus, Mail, Phone, ExternalLink, Check, X, AlertCircle 
 import axios from 'axios'
 import Cookies from 'js-cookie'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001'
 
 function Contacts() {
   const [contacts, setContacts] = useState([])

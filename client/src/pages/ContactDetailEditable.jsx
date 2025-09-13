@@ -5,7 +5,7 @@ import { ArrowLeft, Trash2, Mail, Phone, ExternalLink, Calendar, User, Building,
 import axios from 'axios'
 import Cookies from 'js-cookie'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001'
 
 function ContactDetailEditable() {
   const { id } = useParams()
