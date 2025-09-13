@@ -34,15 +34,15 @@ function Login() {
   }
 
   const testBackendConnection = async () => {
-    console.log('Testing backend connection...')
+    console.log('Testing backend connection at', import.meta.env.VITE_API_URL || 'http://localhost:5001')
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/test`)
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/test`)
       const data = await response.json()
       console.log('Backend test response:', data)
       alert(`Backend is ${data.message}. Google Client ID: ${data.googleClientId}`)
     } catch (error) {
       console.error('Backend test failed:', error)
-      alert('Cannot connect to backend. Make sure the server is running on port 5000')
+      alert('Cannot connect to backend. Make sure the server is running on port 5001')
     }
   }
 
