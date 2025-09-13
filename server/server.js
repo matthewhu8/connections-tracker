@@ -12,6 +12,8 @@ app.use(cors({
     'http://localhost:5173',
     'http://localhost:5174',
     'http://localhost:3001',
+    'https://networktracker.up.railway.app',
+    'http://networktracker.up.railway.app/login',
     process.env.CLIENT_URL
   ].filter(Boolean),
   credentials: true,
@@ -32,7 +34,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/contacts', contactRoutes);
 app.use('/api/notes', noteRoutes);
 app.use('/api', importExportRoutes);
-
+app.use('/api/dashboard', dashboardRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
