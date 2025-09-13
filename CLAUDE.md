@@ -7,12 +7,11 @@ A lightweight, purpose-built CRM for recruiting that replaces messy spreadsheets
 
 ## Recommended Tech Stack (pragmatic, fast to ship)
 
-- **Frontend:** Next.js (App Router) + React + Tailwind CSS  
+- **Frontend:** React.js (App Router) + React + Tailwind CSS  
 - **Auth:** NextAuth (email magic link) or Clerk (simpler UX)  
 - **Database:** Postgres (Supabase or Railway)  
 - **ORM:** Prisma  
 - **File/CSV Handling:** Papaparse (client) or server-side CSV parsing (e.g., `csv-parse`)  
-- **APIs:** Next.js Route Handlers (REST)  
 - **Jobs/Cron:** Vercel Cron (or Supabase Scheduled Jobs)  
 - **Hosting:** Vercel (FE+API) + Supabase/Railway (DB)
 

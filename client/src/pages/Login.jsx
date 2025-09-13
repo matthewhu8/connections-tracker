@@ -4,7 +4,7 @@ import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google'
 import { useAuth } from '../context/AuthContext'
 import { Users } from 'lucide-react'
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '949663493396-59iorc4cv268t41etlfftb9oebkmq5o7.apps.googleusercontent.com'
+const GOOGLE_CLIENT_ID = '949663493396-59iorc4cv268t41etlfftb9oebkmq5o7.apps.googleusercontent.com'
 
 function Login() {
   const navigate = useNavigate()

@@ -6,7 +6,7 @@ const prisma = require('../utils/prisma');
 const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const googleClient = new OAuth2Client("949663493396-59iorc4cv268t41etlfftb9oebkmq5o7.apps.googleusercontent.com");
 
 // Register
 router.post('/register', async (req, res) => {
@@ -103,7 +103,6 @@ router.post('/login', async (req, res) => {
 router.post('/google', async (req, res) => {
   console.log('=== Google Auth Endpoint Hit ===');
   console.log('Request body:', req.body);
-  console.log('Google Client ID from env:', process.env.GOOGLE_CLIENT_ID);
   
   try {
     const { credential } = req.body;
@@ -122,7 +121,7 @@ router.post('/google', async (req, res) => {
     // Verify Google token
     const ticket = await googleClient.verifyIdToken({
       idToken: credential,
-      audience: process.env.GOOGLE_CLIENT_ID,
+      audience: "949663493396-59iorc4cv268t41etlfftb9oebkmq5o7.apps.googleusercontent.com",
     });
 
     console.log('Google verification successful');
